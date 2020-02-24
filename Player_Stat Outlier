@@ -73,3 +73,65 @@ model_df = pd.get_dummies(model_df)
 X = model_df.loc[:, ['time_buckets', 'running_ct', 'mean_bets', 'sd_bets', 'statistic_0', 'statistic_1', 'statistic_2', 'statistic_3', 'statistic_4']]
 y = model_df.loc[:, 'outlier']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+logreg = LogisticRegression()
+logreg.fit(X_train, y_train)
+
+y_pred = logreg.predict_proba(X_test)
+y_pred = y_pred[:,1] > 0.5
+
+print("=== Confusion Matrix ===")
+print(confusion_matrix(y_test, y_pred))
+print('\n')
+print("=== Classification Report ===")
+print(classification_report(y_test, y_pred))
+
+fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+# create plot
+plt.plot(fpr, tpr, color='blue',
+          label='ROC curve (area = %0.2f)' % auc(fpr, tpr))
+plt.plot([0, 1], [0, 1], 'k--', label='Random guess')
+_ = plt.xlabel('False Positive Rate')
+_ = plt.ylabel('True Positive Rate')
+_ = plt.title('ROC Curve')
+_ = plt.xlim([-0.02, 1])
+_ = plt.ylim([0, 1.02])
+_ = plt.legend(loc="lower right")
+
+under_bets['mean_bets'] = under_bets.groupby(['external_id', 'statistic', 'time_buckets'])['running_ct'].transform('mean')
+under_bets['sd_bets'] = under_bets.groupby(['external_id', 'statistic', 'time_buckets'])['running_ct'].transform('std')
+
+under_bets = under_bets.fillna(0)
+under_bets['outlier'] = np.where(under_bets.running_ct > under_bets.mean_bets + (2.5*under_bets.sd_bets), 1, 0)
+
+under_model_df = under_bets.loc[:, ['statistic', 'time_buckets', 'running_ct', 'mean_bets', 'sd_bets', 'outlier']]
+under_model_df['statistic'] = under_model_df['statistic'].astype('object')
+under_model_df = pd.get_dummies(under_model_df)
+
+under_X = under_model_df.loc[:, ['time_buckets', 'running_ct', 'mean_bets', 'sd_bets', 'statistic_0', 'statistic_1', 'statistic_2', 'statistic_3', 'statistic_4']]
+under_y = under_model_df.loc[:, 'outlier']
+under_X_train, under_X_test, under_y_train, under_y_test = train_test_split(under_X, under_y, test_size=0.2, random_state=42)
+
+under_logreg = LogisticRegression()
+under_logreg.fit(under_X_train, under_y_train)
+
+under_y_pred = under_logreg.predict_proba(under_X_test)
+under_y_pred = under_y_pred[:,1] > 0.3
+
+print("=== Confusion Matrix ===")
+print(confusion_matrix(under_y_test, under_y_pred))
+print('\n')
+print("=== Classification Report ===")
+print(classification_report(under_y_test, under_y_pred))
+
+fpr, tpr, thresholds = roc_curve(under_y_test, under_y_pred)
+# create plot
+plt.plot(fpr, tpr, color='blue',
+          label='ROC curve (area = %0.2f)' % auc(fpr, tpr))
+plt.plot([0, 1], [0, 1], 'k--', label='Random guess')
+_ = plt.xlabel('False Positive Rate')
+_ = plt.ylabel('True Positive Rate')
+_ = plt.title('ROC Curve')
+_ = plt.xlim([-0.02, 1])
+_ = plt.ylim([0, 1.02])
+_ = plt.legend(loc="lower right")
