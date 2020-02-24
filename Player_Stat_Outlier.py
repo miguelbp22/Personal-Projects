@@ -58,22 +58,29 @@ connection.close()
 all_nba_bets['full_name'] = all_nba_bets['first_name'].astype(str) + ' ' + all_nba_bets['last_name'].astype(str)
 all_nba_bets = all_nba_bets.drop(['first_name', 'last_name'], axis = 1)
 
+#separating main df into two data frames, one of over bets and another of under bets
 over_bets, under_bets = all_nba_bets[all_nba_bets['prediction'] == 0], all_nba_bets[all_nba_bets['prediction'] == 1]
 
+#grouping the bets by player, stat and time bucket to gather the mean and standard deviation of each player/stat/time combo
 over_bets['mean_bets'] = over_bets.groupby(['external_id', 'statistic', 'time_buckets'])['running_ct'].transform('mean')
 over_bets['sd_bets'] = over_bets.groupby(['external_id', 'statistic', 'time_buckets'])['running_ct'].transform('std')
 
+#some std devs are NA since there are some combos that have only 1 obs, so no SD can be claculated, therefore, we replace NA's with 0
 over_bets = over_bets.fillna(0)
+#making a new variable that determines whether an obs is an outlier or not - if obs is 2.5 sd away from mean, it's determined to be ab outlier
 over_bets['outlier'] = np.where(over_bets.running_ct > over_bets.mean_bets + (2.5*over_bets.sd_bets), 1, 0)
 
+#subset the variables we'll keep to model and make dummy variables out of categorical vars 
 model_df = over_bets.loc[:, ['statistic', 'time_buckets', 'running_ct', 'mean_bets', 'sd_bets', 'outlier']]
 model_df['statistic'] = model_df['statistic'].astype('object')
 model_df = pd.get_dummies(model_df)
 
+#separating the predictors from the target variable, and splitting into train and test 
 X = model_df.loc[:, ['time_buckets', 'running_ct', 'mean_bets', 'sd_bets', 'statistic_0', 'statistic_1', 'statistic_2', 'statistic_3', 'statistic_4']]
 y = model_df.loc[:, 'outlier']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+#Log_reg fitting
 logreg = LogisticRegression()
 logreg.fit(X_train, y_train)
 
@@ -86,8 +93,8 @@ print('\n')
 print("=== Classification Report ===")
 print(classification_report(y_test, y_pred))
 
+#plotting the ROC Curve
 fpr, tpr, thresholds = roc_curve(y_test, y_pred)
-# create plot
 plt.plot(fpr, tpr, color='blue',
           label='ROC curve (area = %0.2f)' % auc(fpr, tpr))
 plt.plot([0, 1], [0, 1], 'k--', label='Random guess')
@@ -98,6 +105,8 @@ _ = plt.xlim([-0.02, 1])
 _ = plt.ylim([0, 1.02])
 _ = plt.legend(loc="lower right")
 
+
+#Same pre-processing and fitting with 'under' bets
 under_bets['mean_bets'] = under_bets.groupby(['external_id', 'statistic', 'time_buckets'])['running_ct'].transform('mean')
 under_bets['sd_bets'] = under_bets.groupby(['external_id', 'statistic', 'time_buckets'])['running_ct'].transform('std')
 
