@@ -285,6 +285,15 @@ def model_comp_viz(stat, full_game_id, player_name, player_id):
     plt.title('%s %s Historic vs. Playoff Model Odds vs. Reg. Season Model Odds' % (player_name, stats[idx]))
     plt.show
 
+######################
+###PLAYER-GAME INFO###
+######################
+#this is created for the data preprocessing stage for the adjuster brier score visualization tool 
+player_game_features = ['player_id', 'game_id']
+player_game_info = full_playoff_df.loc[:, player_game_features].reset_index(drop = True)
+dummy_y = np.ones(player_game_info.shape[0])
+player_X_train, player_X_test, player_y_train, player_y_test = train_test_split(player_game_info, dummy_y, test_size=0.2, random_state=0)    
+
 #####################
 #######POINTS########
 #####################
